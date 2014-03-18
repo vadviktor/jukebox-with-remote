@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <meta charset="utf-8">
+
+  <script type="text/javascript">
+    window.server_url = '<%= server_url %>';
+
+    window.music_files = [
+    <% music_files.forEach(function(f) { %>
+      '<%= f %>',
+    <% }); %>
+    ];
+  </script>
+</head>
+<body>
+  <audio id="jukebox" src="" controls preload="metadata"></audio>
+
+  <script type="text/javascript" src="/js/jquery.min.js"></script>
+  <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="/js/player.js"></script>
+</body>
+</html>

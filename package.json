@@ -1,0 +1,11 @@
+{
+  "name": "jukebox",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "express": "3.x",
+    "ejs": "0.8.x",
+    "socket.io": "0.9.x",
+    "recursive-readdir": "1.x"
+  }
+}
