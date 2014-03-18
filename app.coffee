@@ -6,7 +6,7 @@ server = require('http').createServer(app)
 io = require('socket.io').listen(server)
 music_dir = './public/music'
 
-app.locals.server_url = 'http://192.168.137.1'
+app.locals.server_url = 'http://localhost:3000'
 
 # setup
 app.set 'view engine', 'ejs'

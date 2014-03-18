@@ -16,7 +16,7 @@
 
   music_dir = './public/music';
 
-  app.locals.server_url = 'http://192.168.137.1';
+  app.locals.server_url = 'http://localhost:3000';
 
   app.set('view engine', 'ejs');
 
