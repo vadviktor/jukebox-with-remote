@@ -34,22 +34,6 @@
     return res.render('remote');
   });
 
-  create_playlist = function() {
-    console.log("Playlist being created.");
-    return r_readdir(music_dir, function(err, files) {
-      var f, filtered_files, _i, _len;
-      filtered_files = [];
-      for (_i = 0, _len = files.length; _i < _len; _i++) {
-        f = files[_i];
-        if (f.substr(-5) !== '.flac') {
-          filtered_files.push(encodeURIComponent('http://localhot:8080/' + f.substr(music_dir.length)));
-        }
-      }
-      app.locals.music_files = filtered_files;
-      return console.log("Playlist now has " + filtered_files.length + " items.");
-    });
-  };
-
   io.sockets.on('connection', function(jb) {
     console.log("socket.io connected");
     jb.on('disconnect', function() {
@@ -77,6 +61,22 @@
       return console.log('REMOTE: I decrease volume');
     });
   });
+
+  create_playlist = function() {
+    console.log("Playlist being created.");
+    return r_readdir(music_dir, function(err, files) {
+      var f, filtered_files, _i, _len;
+      filtered_files = [];
+      for (_i = 0, _len = files.length; _i < _len; _i++) {
+        f = files[_i];
+        if (f.substr(-5) !== '.flac') {
+          filtered_files.push(encodeURIComponent('http://localhot:8080/' + f.substr(music_dir.length)));
+        }
+      }
+      app.locals.music_files = filtered_files;
+      return console.log("Playlist now has " + filtered_files.length + " items.");
+    });
+  };
 
   server.listen(3000, function() {
     console.log("Listening on port " + (server.address().port));

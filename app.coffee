@@ -24,14 +24,6 @@ app.get '/remote', (req, res)->
   res.render 'remote'
 
 
-create_playlist = ->
-  console.log "Playlist being created."
-  r_readdir music_dir, (err, files)->
-    filtered_files = []
-    filtered_files.push(encodeURIComponent('http://localhot:8080/'+f.substr(music_dir.length))) for f in files when f.substr(-5) isnt '.flac'
-    app.locals.music_files = filtered_files
-    console.log "Playlist now has #{filtered_files.length} items."
-
 # socket.io
 io.sockets.on 'connection', (jb)->
   console.log "socket.io connected"
@@ -60,6 +52,16 @@ io.sockets.on 'connection', (jb)->
   jb.on 'remote_vol_down', ->
     console.log 'REMOTE: I decrease volume'
 
+
+
+
+create_playlist = ->
+  console.log "Playlist being created."
+  r_readdir music_dir, (err, files)->
+    filtered_files = []
+    filtered_files.push(encodeURIComponent('http://localhot:8080/'+f.substr(music_dir.length))) for f in files when f.substr(-5) isnt '.flac'
+    app.locals.music_files = filtered_files
+    console.log "Playlist now has #{filtered_files.length} items."
 
 # start server
 server.listen 3000, ->
