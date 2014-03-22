@@ -18,18 +18,6 @@
         this.socket_events();
       }
 
-      Remote.prototype.on_connect = function() {
-        this.alert_socket_disconnect.addClass('hidden');
-        this.alert_socket_connect.removeClass('hidden');
-        return this.disable_interface(false);
-      };
-
-      Remote.prototype.on_disconnect = function() {
-        this.alert_socket_connect.addClass('hidden');
-        this.alert_socket_disconnect.removeClass('hidden');
-        return this.disable_interface();
-      };
-
       Remote.prototype.disable_interface = function(disabled) {
         var b, _i, _len, _ref, _results;
         if (disabled == null) {
@@ -45,7 +33,7 @@
       };
 
       Remote.prototype.jq_events = function() {
-        return this.button_play_pause.on('click', (function(_this) {
+        this.button_play_pause.on('click', (function(_this) {
           return function(event) {
             if ($(event.currentTarget).hasClass('btn-warning')) {
               _this.play();
@@ -57,17 +45,45 @@
             }
           };
         })(this));
+        this.button_mute.on('click', (function(_this) {
+          return function(event) {
+            if ($(event.currentTarget).hasClass('btn-warning')) {
+              _this.unmute();
+              return true;
+            }
+            if ($(event.currentTarget).hasClass('btn-primary')) {
+              _this.mute();
+              return true;
+            }
+          };
+        })(this));
+        this.button_volume_up.on('click', (function(_this) {
+          return function(event) {
+            _this.change_mute_button_to_mute();
+            return _this.server.emit('remote_vol_up');
+          };
+        })(this));
+        return this.button_volume_down.on('click', (function(_this) {
+          return function(event) {
+            return _this.server.emit('remote_vol_down');
+          };
+        })(this));
       };
 
       Remote.prototype.socket_events = function() {
         this.server.on('connect', (function(_this) {
           return function() {
-            return _this.on_connect();
+            _this.server.emit('iam', 'remote');
+            _this.alert_socket_disconnect.addClass('hidden');
+            _this.alert_socket_connect.removeClass('hidden');
+            return _this.disable_interface(false);
           };
         })(this));
         return this.server.on('disconnect', (function(_this) {
           return function() {
-            return _this.on_disconnect();
+            _this.alert_socket_connect.addClass('hidden');
+            _this.alert_socket_disconnect.removeClass('hidden');
+            return _this.disable_interface();
           };
         })(this));
       };
@@ -80,6 +96,20 @@
       Remote.prototype.pause = function() {
         this.server.emit('remote_pause');
         return this.button_play_pause.removeClass('btn-primary').addClass('btn-warning').find('span.glyphicon').removeClass('glyphicon-pause').addClass('glyphicon-play').end().find('span.inner_text').html('Play');
+      };
+
+      Remote.prototype.change_mute_button_to_mute = function() {
+        return this.button_mute.removeClass('btn-warning').addClass('btn-primary').find('span.glyphicon').removeClass('glyphicon-music').addClass('glyphicon-volume-off').end().find('span.inner_text').html('Mute');
+      };
+
+      Remote.prototype.mute = function() {
+        this.server.emit('remote_mute');
+        return this.button_mute.removeClass('btn-primary').addClass('btn-warning').find('span.glyphicon').removeClass('glyphicon-volume-off').addClass('glyphicon-music').end().find('span.inner_text').html('Unmute');
+      };
+
+      Remote.prototype.unmute = function() {
+        this.server.emit('remote_unmute');
+        return this.change_mute_button_to_mute();
       };
 
       return Remote;

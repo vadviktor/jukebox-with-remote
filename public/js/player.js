@@ -11,17 +11,67 @@
         this.socket_events();
       }
 
+      Player.prototype.volume_up = function() {
+        var new_vol;
+        new_vol = ((this.player[0].volume * 100) + 5) / 100;
+        return this.player[0].volume = new_vol <= 1 ? new_vol : 1;
+      };
+
+      Player.prototype.volume_down = function() {
+        var new_vol;
+        new_vol = ((this.player[0].volume * 100) - 5) / 100;
+        return this.player[0].volume = new_vol >= 0 ? new_vol : 0;
+      };
+
+      Player.prototype.volume_mute = function() {
+        this.volume_state = this.player[0].volume;
+        return this.player[0].volume = 0;
+      };
+
+      Player.prototype.volume_unmute = function() {
+        return this.player[0].volume = this.volume_state != null ? this.volume_state : this.volume_state = 0.1;
+      };
+
       Player.prototype.socket_events = function() {
-        this.server.on('player_play', (function(_this) {
+        this.server.on('connect', (function(_this) {
+          return function() {
+            return _this.server.emit('iam', 'player');
+          };
+        })(this));
+        this.server.on('play', (function(_this) {
           return function() {
             console.log('PLAYER: I start playing');
             return _this.player[0].play();
           };
         })(this));
-        return this.server.on('player_pause', (function(_this) {
+        this.server.on('pause', (function(_this) {
           return function() {
             console.log('PLAYER: I pause playing');
             return _this.player[0].pause();
+          };
+        })(this));
+        this.server.on('vol_up', (function(_this) {
+          return function() {
+            console.log('PLAYER: I increase volume');
+            return _this.volume_up();
+          };
+        })(this));
+        this.server.on('vol_down', (function(_this) {
+          return function() {
+            console.log('PLAYER: I decrease volume');
+            return _this.volume_down();
+          };
+        })(this));
+        this.server.on('mute', (function(_this) {
+          return function() {
+            console.log('PLAYER: I mute volume');
+            return _this.volume_mute();
+          };
+        })(this));
+        return this.server.on('unmute', (function(_this) {
+          return function() {
+            console.log('PLAYER: I unmute volume');
+            return _this.volume_unmute();
           };
         })(this));
       };
