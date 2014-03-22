@@ -1,15 +1,14 @@
 fs = require 'fs'
-r_readdir = require('recursive-readdir')
+r_readdir = require('recursive-readdir-filter')
 express = require('express')
 app = express()
 server = require('http').createServer(app)
 io = require('socket.io').listen(server)
-music_dir = './public/music'
-
-app.locals.server_url = 'http://localhost:3000'
+settings = JSON.parse fs.readFileSync('settings.json', encoding="ascii")
 
 # setup
 app.set 'view engine', 'ejs'
+app.locals.server_url = "http://#{settings.host_ip}:#{settings.host_port}"
 
 # route
 app.use express.static(__dirname + '/public')
@@ -25,31 +24,34 @@ app.get '/remote', (req, res)->
 
 
 # socket.io
-io.sockets.on 'connection', (jb)->
+
+io.sockets.on 'connection', (socket)->
   console.log "socket.io connected"
 
-  jb.on 'disconnect', ->
+  socket.on 'disconnect', ->
     console.log "socket.id disconnected"
 
-  jb.on 'remote_play', ->
+  socket.on 'remote_play', ->
     console.log 'REMOTE: I resume play'
+    socket.broadcast.emit 'player_play'
 
-  jb.on 'remote_pause', ->
+  socket.on 'remote_pause', ->
     console.log 'REMOTE: I pause the play'
+    socket.broadcast.emit 'player_pause'
 
-  jb.on 'remote_mute', ->
+  socket.on 'remote_mute', ->
     console.log 'REMOTE: I mute the volume'
 
-  jb.on 'remote_forward', ->
+  socket.on 'remote_forward', ->
     console.log 'REMOTE: I load next track'
 
-  jb.on 'remote_backward', ->
+  socket.on 'remote_backward', ->
     console.log 'REMOTE: I load previous track'
 
-  jb.on 'remote_vol_up', ->
+  socket.on 'remote_vol_up', ->
     console.log 'REMOTE: I increase volume'
 
-  jb.on 'remote_vol_down', ->
+  socket.on 'remote_vol_down', ->
     console.log 'REMOTE: I decrease volume'
 
 
@@ -57,14 +59,24 @@ io.sockets.on 'connection', (jb)->
 
 create_playlist = ->
   console.log "Playlist being created."
-  r_readdir music_dir, (err, files)->
+  options =
+    filterDir: (stats)->
+      stats.name.substr(0,1) isnt '.'
+    filterFile: (stats)->
+      stats.name.substr(0,1) isnt '.' and stats.name.match(/\.(mp3|webm|ogg|aac|opus|mp4|wav)$/)
+
+  r_readdir settings.music_dir, options, (err, files)->
     filtered_files = []
-    filtered_files.push(encodeURIComponent('http://localhot:8080/'+f.substr(music_dir.length))) for f in files when f.substr(-5) isnt '.flac'
+    for f in files
+      do (f)->
+        relative_url = "music/#{f.substr(settings.music_dir.length+1)}"
+        filtered_files.push encodeURIComponent(relative_url)
+
     app.locals.music_files = filtered_files
     console.log "Playlist now has #{filtered_files.length} items."
 
 # start server
-server.listen 3000, ->
+server.listen settings.host_port, ->
   console.log "Listening on port #{server.address().port}"
   create_playlist()
   true
