@@ -10,7 +10,9 @@ $(document).ready ->
       @button_volume_down = $('#button_volume_down')
       @button_mute = $('#button_mute')
       @button_volume_up = $('#button_volume_up')
-      @progress_playtime = $('#progress_playtime')
+      @progress_playtime_current = $('#progress_playtime_current')
+      @progress_playtime_remaining = $('#progress_playtime_remaining')
+      @progress_volume = $('#progress_volume')
       @alert_socket_connect = $('#alert_socket_connect')
       @alert_socket_disconnect = $('#alert_socket_disconnect')
 
@@ -27,6 +29,25 @@ $(document).ready ->
         @button_mute,
         @button_volume_up
       ]
+
+    seconds2time: (seconds)->
+      hours = Math.floor(seconds / 3600)
+      minutes = Math.floor((seconds - (hours * 3600)) / 60)
+      seconds = seconds - (hours * 3600) - (minutes * 60)
+      time = "";
+
+      time = "#{hours}:" if hours isnt 0
+
+      if minutes isnt 0 or time isnt ""
+        minutes =  if minutes < 10 and time isnt "" then "0#{minutes}" else String(minutes)
+        time += "#{minutes}:"
+
+      if time is ""
+        time = "#{seconds}s"
+      else
+        time += if seconds < 10 then "0#{seconds}" else String(seconds)
+
+      time
 
     jq_events: ->
       @button_play_pause.on 'click', (event)=>
@@ -68,6 +89,25 @@ $(document).ready ->
         @alert_socket_disconnect.removeClass 'hidden'
         @disable_interface()
 
+      @server.on 'player_riport_volume', (data)=>
+        @progress_volume
+          .find('.progress-bar')
+          .attr('aria-valuenow', data.volume)
+          .css('width', "#{data.volume}%")
+          .html("#{data.volume}%")
+
+      @server.on 'player_riport_playtime', (data)=>
+        playtime_percent = ((data.currentTime / data.duration) * 100).toFixed()
+        played = @seconds2time data.currentTime.toFixed()
+        remaining = @seconds2time data.duration.toFixed() - data.currentTime.toFixed() # TODO CPU can be saved
+        @progress_playtime_current
+          .attr('aria-valuenow', playtime_percent)
+          .css('width', "#{playtime_percent}%")
+          .html("#{played}")
+        @progress_playtime_remaining
+          .attr('aria-valuenow', 100 - playtime_percent)
+          .css('width', "#{100 - playtime_percent}%")
+          .html("-#{remaining}")
 
     play: ->
       # emit player action

@@ -90,9 +90,17 @@
       io.sockets.socket(player).emit('vol_up');
       return logthis('REMOTE: I increase volume');
     });
-    return socket.on('remote_vol_down', function() {
+    socket.on('remote_vol_down', function() {
       io.sockets.socket(player).emit('vol_down');
       return logthis('REMOTE: I decrease volume');
+    });
+    socket.on('player_riport_volume', function(data) {
+      io.sockets.socket(remote).emit('player_riport_volume', data);
+      return logthis('PLAYER: I riport volume');
+    });
+    return socket.on('player_riport_playtime', function(data) {
+      io.sockets.socket(remote).emit('player_riport_playtime', data);
+      return logthis('PLAYER: I report playtime');
     });
   });
 

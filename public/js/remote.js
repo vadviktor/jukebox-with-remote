@@ -11,7 +11,9 @@
         this.button_volume_down = $('#button_volume_down');
         this.button_mute = $('#button_mute');
         this.button_volume_up = $('#button_volume_up');
-        this.progress_playtime = $('#progress_playtime');
+        this.progress_playtime_current = $('#progress_playtime_current');
+        this.progress_playtime_remaining = $('#progress_playtime_remaining');
+        this.progress_volume = $('#progress_volume');
         this.alert_socket_connect = $('#alert_socket_connect');
         this.alert_socket_disconnect = $('#alert_socket_disconnect');
         this.jq_events();
@@ -30,6 +32,27 @@
           _results.push($(b).prop('disabled', disabled));
         }
         return _results;
+      };
+
+      Remote.prototype.seconds2time = function(seconds) {
+        var hours, minutes, time;
+        hours = Math.floor(seconds / 3600);
+        minutes = Math.floor((seconds - (hours * 3600)) / 60);
+        seconds = seconds - (hours * 3600) - (minutes * 60);
+        time = "";
+        if (hours !== 0) {
+          time = "" + hours + ":";
+        }
+        if (minutes !== 0 || time !== "") {
+          minutes = minutes < 10 && time !== "" ? "0" + minutes : String(minutes);
+          time += "" + minutes + ":";
+        }
+        if (time === "") {
+          time = "" + seconds + "s";
+        } else {
+          time += seconds < 10 ? "0" + seconds : String(seconds);
+        }
+        return time;
       };
 
       Remote.prototype.jq_events = function() {
@@ -79,11 +102,26 @@
             return _this.disable_interface(false);
           };
         })(this));
-        return this.server.on('disconnect', (function(_this) {
+        this.server.on('disconnect', (function(_this) {
           return function() {
             _this.alert_socket_connect.addClass('hidden');
             _this.alert_socket_disconnect.removeClass('hidden');
             return _this.disable_interface();
+          };
+        })(this));
+        this.server.on('player_riport_volume', (function(_this) {
+          return function(data) {
+            return _this.progress_volume.find('.progress-bar').attr('aria-valuenow', data.volume).css('width', "" + data.volume + "%").html("" + data.volume + "%");
+          };
+        })(this));
+        return this.server.on('player_riport_playtime', (function(_this) {
+          return function(data) {
+            var played, playtime_percent, remaining;
+            playtime_percent = ((data.currentTime / data.duration) * 100).toFixed();
+            played = _this.seconds2time(data.currentTime.toFixed());
+            remaining = _this.seconds2time(data.duration.toFixed() - data.currentTime.toFixed());
+            _this.progress_playtime_current.attr('aria-valuenow', playtime_percent).css('width', "" + playtime_percent + "%").html("" + played);
+            return _this.progress_playtime_remaining.attr('aria-valuenow', 100 - playtime_percent).css('width', "" + (100 - playtime_percent) + "%").html("-" + remaining);
           };
         })(this));
       };

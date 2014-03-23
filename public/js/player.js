@@ -9,27 +9,49 @@
         console.log('Loading first song into jukebox');
         $(this.player).attr('src', window.music_files[0]);
         this.socket_events();
+        this.jb_events();
       }
+
+      Player.prototype.setIntervalWithContext = function(code, delay, context) {
+        return setInterval(function() {
+          return code.call(context);
+        }, delay);
+      };
 
       Player.prototype.volume_up = function() {
         var new_vol;
         new_vol = ((this.player[0].volume * 100) + 5) / 100;
-        return this.player[0].volume = new_vol <= 1 ? new_vol : 1;
+        this.player[0].volume = new_vol <= 1 ? new_vol : 1;
+        return this.riport_current_volume(this.player[0].volume);
       };
 
       Player.prototype.volume_down = function() {
         var new_vol;
         new_vol = ((this.player[0].volume * 100) - 5) / 100;
-        return this.player[0].volume = new_vol >= 0 ? new_vol : 0;
+        this.player[0].volume = new_vol >= 0 ? new_vol : 0;
+        return this.riport_current_volume(this.player[0].volume);
       };
 
       Player.prototype.volume_mute = function() {
         this.volume_state = this.player[0].volume;
-        return this.player[0].volume = 0;
+        this.player[0].volume = 0;
+        return this.riport_current_volume(this.player[0].volume);
       };
 
       Player.prototype.volume_unmute = function() {
-        return this.player[0].volume = this.volume_state != null ? this.volume_state : this.volume_state = 0.1;
+        this.player[0].volume = this.volume_state != null ? this.volume_state : this.volume_state = 0.1;
+        return this.riport_current_volume(this.player[0].volume);
+      };
+
+      Player.prototype.riport_current_volume = function(vol) {
+        return this.server.emit('player_riport_volume', {
+          volume: (vol * 100).toFixed()
+        });
+      };
+
+      Player.prototype.stop_playtime_riporter = function() {
+        clearInterval(this.current_playtime_riporter);
+        return this.current_playtime_riporter = null;
       };
 
       Player.prototype.socket_events = function() {
@@ -41,13 +63,20 @@
         this.server.on('play', (function(_this) {
           return function() {
             console.log('PLAYER: I start playing');
-            return _this.player[0].play();
+            _this.player[0].play();
+            return _this.current_playtime_riporter = _this.setIntervalWithContext(function() {
+              return this.server.emit('player_riport_playtime', {
+                duration: this.player[0].duration,
+                currentTime: this.player[0].currentTime
+              });
+            }, 1000, _this);
           };
         })(this));
         this.server.on('pause', (function(_this) {
           return function() {
             console.log('PLAYER: I pause playing');
-            return _this.player[0].pause();
+            _this.player[0].pause();
+            return _this.stop_playtime_riporter();
           };
         })(this));
         this.server.on('vol_up', (function(_this) {
@@ -72,6 +101,14 @@
           return function() {
             console.log('PLAYER: I unmute volume');
             return _this.volume_unmute();
+          };
+        })(this));
+      };
+
+      Player.prototype.jb_events = function() {
+        return this.player.on('ended', (function(_this) {
+          return function(event) {
+            return _this.stop_playtime_riporter();
           };
         })(this));
       };

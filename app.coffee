@@ -81,6 +81,13 @@ io.sockets.on 'connection', (socket)->
     io.sockets.socket(player).emit 'vol_down'
     logthis 'REMOTE: I decrease volume'
 
+  socket.on 'player_riport_volume', (data)->
+    io.sockets.socket(remote).emit 'player_riport_volume', data
+    logthis 'PLAYER: I riport volume'
+
+  socket.on 'player_riport_playtime', (data)->
+    io.sockets.socket(remote).emit 'player_riport_playtime', data
+    logthis 'PLAYER: I report playtime'
 
 
 create_playlist = ->
