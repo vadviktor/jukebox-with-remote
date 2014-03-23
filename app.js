@@ -17,7 +17,7 @@
   settings = JSON.parse(fs.readFileSync('settings.json', encoding = "ascii"));
 
   logthis = function(msg) {
-    return console.log("[>>> " + msg + " <<<]");
+    return console.log("[-----> " + msg + " ]");
   };
 
   app.set('view engine', 'ejs');
@@ -38,18 +38,18 @@
     return res.render('remote');
   });
 
-  player = '';
+  player = null;
 
-  remote = '';
+  remote = null;
 
   io.sockets.on('connection', function(socket) {
     logthis("socket.io connected");
     socket.on('disconnect', function() {
       if (socket.id === player) {
-        player = '';
+        player = null;
       }
       if (socket.id === remote) {
-        remote = '';
+        remote = null;
       }
       return logthis("" + socket.id + " disconnected");
     });
@@ -59,6 +59,9 @@
       }
       if (me === 'remote') {
         remote = socket.id;
+      }
+      if (player !== null && remote !== null) {
+        io.sockets.socket(player).emit('full_status');
       }
       return logthis("" + me + " has just connected (" + socket.id + ")");
     });
@@ -98,9 +101,13 @@
       io.sockets.socket(remote).emit('player_riport_volume', data);
       return logthis('PLAYER: I riport volume');
     });
-    return socket.on('player_riport_playtime', function(data) {
+    socket.on('player_riport_playtime', function(data) {
       io.sockets.socket(remote).emit('player_riport_playtime', data);
       return logthis('PLAYER: I report playtime');
+    });
+    return socket.on('player_full_status', function(data) {
+      io.sockets.socket(remote).emit('player_full_status', data);
+      return logthis('PLAYER: I report full status');
     });
   });
 

@@ -7,7 +7,7 @@ io = require('socket.io').listen(server)
 settings = JSON.parse fs.readFileSync('settings.json', encoding="ascii")
 
 logthis = (msg)->
-  console.log "[>>> #{msg} <<<]"
+  console.log "[-----> #{msg} ]"
 
 
 # setup
@@ -29,25 +29,26 @@ app.get '/remote', (req, res)->
 
 
 # socket.io
-player = ''
-remote = ''
+player = null
+remote = null
 
 io.sockets.on 'connection', (socket)->
   logthis "socket.io connected"
 
   socket.on 'disconnect', ->
-    player = '' if socket.id is player
-    remote = '' if socket.id is remote
+    player = null if socket.id is player
+    remote = null if socket.id is remote
+    # logthis "player is #{player}"
+    # logthis "remote is #{remote}"
     logthis "#{socket.id} disconnected"
-#    logthis "player is #{player}"
-#    logthis "remote is #{remote}"
 
   socket.on 'iam', (me)->
     player = socket.id if me is 'player'
     remote = socket.id if me is 'remote'
+    # logthis "player is #{player}"
+    # logthis "remote is #{remote}"
+    io.sockets.socket(player).emit 'full_status' if player isnt null and remote isnt null
     logthis "#{me} has just connected (#{socket.id})"
-#    logthis "player is #{player}"
-#    logthis "remote is #{remote}"
 
   socket.on 'remote_play', ->
     io.sockets.socket(player).emit 'play'
@@ -88,6 +89,11 @@ io.sockets.on 'connection', (socket)->
   socket.on 'player_riport_playtime', (data)->
     io.sockets.socket(remote).emit 'player_riport_playtime', data
     logthis 'PLAYER: I report playtime'
+
+  socket.on 'player_full_status', (data)->
+    io.sockets.socket(remote).emit 'player_full_status', data
+    logthis 'PLAYER: I report full status'
+
 
 
 create_playlist = ->

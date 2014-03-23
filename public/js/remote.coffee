@@ -77,6 +77,12 @@ $(document).ready ->
       @button_volume_down.on 'click', (event)=>
         @server.emit 'remote_vol_down'
 
+      @button_step_forward.on 'click', (event)=>
+        @server.emit 'remote_forward'
+
+      @button_step_backward.on 'click', (event)=>
+        @server.emit 'remote_backward'
+
     socket_events: ->
       @server.on 'connect', =>
         @server.emit 'iam', 'remote'
@@ -84,58 +90,75 @@ $(document).ready ->
         @alert_socket_connect.removeClass 'hidden'
         @disable_interface(false)
 
+      @server.on 'player_full_status', (data)=>
+        if data.is_paused then @change_play_button_to_play() else @change_play_button_to_pause()
+        if data.volume is 0 then @change_mute_button_to_unmute() else @change_mute_button_to_mute()
+        @update_volume_progressbar data.volume
+        @update_playtime_progressbar data.currentTime, data.duration
+        $('#currently_playing').html decodeURIComponent(data.src)
+
       @server.on 'disconnect', =>
         @alert_socket_connect.addClass 'hidden'
         @alert_socket_disconnect.removeClass 'hidden'
         @disable_interface()
 
       @server.on 'player_riport_volume', (data)=>
-        @progress_volume
-          .find('.progress-bar')
-          .attr('aria-valuenow', data.volume)
-          .css('width', "#{data.volume}%")
-          .html("#{data.volume}%")
+        @update_volume_progressbar data.volume
 
       @server.on 'player_riport_playtime', (data)=>
-        playtime_percent = ((data.currentTime / data.duration) * 100).toFixed()
-        played = @seconds2time data.currentTime.toFixed()
-        remaining = @seconds2time data.duration.toFixed() - data.currentTime.toFixed() # TODO CPU can be saved
-        @progress_playtime_current
-          .attr('aria-valuenow', playtime_percent)
-          .css('width', "#{playtime_percent}%")
-          .html("#{played}")
-        @progress_playtime_remaining
-          .attr('aria-valuenow', 100 - playtime_percent)
-          .css('width', "#{100 - playtime_percent}%")
-          .html("-#{remaining}")
+        @update_playtime_progressbar data.currentTime, data.duration
 
-    play: ->
-      # emit player action
-      @server.emit 'remote_play'
-      # change button
-      @button_play_pause
-        .removeClass 'btn-warning'
-        .addClass 'btn-primary'
-        .find 'span.glyphicon'
-        .removeClass 'glyphicon-play'
-        .addClass 'glyphicon-pause'
-        .end()
-        .find 'span.inner_text'
-        .html 'Pause'
+    update_playtime_progressbar: (current, duration)->
+      unless duration is null
+        playtime_percent = ((current / duration) * 100).toFixed()
+        played = @seconds2time current.toFixed()
+        remaining = @seconds2time duration.toFixed() - current.toFixed() # TODO CPU can be saved
+      else
+        playtime_percent = played = remaining = 0
 
-    pause: ->
-      # emit player action
-      @server.emit 'remote_pause'
-      # change button
+      @progress_playtime_current
+        .attr 'aria-valuenow', playtime_percent
+        .css 'width', "#{playtime_percent}%"
+        .html "#{played}"
+      @progress_playtime_remaining
+        .attr 'aria-valuenow', 100 - playtime_percent
+        .css 'width', "#{100 - playtime_percent}%"
+        .html "-#{remaining}"
+
+    update_volume_progressbar: (vol)->
+      @progress_volume
+        .find '.progress-bar'
+        .attr 'aria-valuenow', vol
+        .css 'width', "#{vol}%"
+        .html "#{vol}%"
+
+    change_play_button_to_play: ->
       @button_play_pause
         .removeClass 'btn-primary'
         .addClass 'btn-warning'
         .find 'span.glyphicon'
         .removeClass 'glyphicon-pause'
         .addClass 'glyphicon-play'
-        .end()
-        .find 'span.inner_text'
-        .html 'Play'
+
+    change_play_button_to_pause: ->
+      @button_play_pause
+        .removeClass 'btn-warning'
+        .addClass 'btn-primary'
+        .find 'span.glyphicon'
+        .removeClass 'glyphicon-play'
+        .addClass 'glyphicon-pause'
+
+    play: ->
+      # emit player action
+      @server.emit 'remote_play'
+      # change button
+      @change_play_button_to_pause()
+
+    pause: ->
+      # emit player action
+      @server.emit 'remote_pause'
+      # change button
+      @change_play_button_to_play()
 
     change_mute_button_to_mute: ->
       @button_mute
@@ -144,23 +167,20 @@ $(document).ready ->
         .find 'span.glyphicon'
         .removeClass 'glyphicon-music'
         .addClass 'glyphicon-volume-off'
-        .end()
-        .find 'span.inner_text'
-        .html 'Mute'
 
-    mute: ->
-      # emit player action
-      @server.emit 'remote_mute'
-      # change button
+    change_mute_button_to_unmute: ->
       @button_mute
         .removeClass 'btn-primary'
         .addClass 'btn-warning'
         .find 'span.glyphicon'
         .removeClass 'glyphicon-volume-off'
         .addClass 'glyphicon-music'
-        .end()
-        .find 'span.inner_text'
-        .html 'Unmute'
+
+    mute: ->
+      # emit player action
+      @server.emit 'remote_mute'
+      # change button
+      @change_mute_button_to_unmute()
 
     unmute: ->
       # emit player action

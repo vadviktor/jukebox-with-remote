@@ -4,12 +4,13 @@
     var Player, p;
     Player = (function() {
       function Player() {
-        this.player = $('#player');
         this.server = io.connect(window.server_url);
-        console.log('Loading first song into jukebox');
-        $(this.player).attr('src', window.music_files[0]);
+        this.player = $('#player')[0];
+        this.currently_playing_id = 0;
         this.socket_events();
         this.jb_events();
+        console.log('Loading first song into jukebox');
+        this.player.src = window.music_files[this.currently_playing_id];
       }
 
       Player.prototype.setIntervalWithContext = function(code, delay, context) {
@@ -20,27 +21,27 @@
 
       Player.prototype.volume_up = function() {
         var new_vol;
-        new_vol = ((this.player[0].volume * 100) + 5) / 100;
-        this.player[0].volume = new_vol <= 1 ? new_vol : 1;
-        return this.riport_current_volume(this.player[0].volume);
+        new_vol = ((this.player.volume * 100) + 5) / 100;
+        this.player.volume = new_vol <= 1 ? new_vol : 1;
+        return this.riport_current_volume(this.player.volume);
       };
 
       Player.prototype.volume_down = function() {
         var new_vol;
-        new_vol = ((this.player[0].volume * 100) - 5) / 100;
-        this.player[0].volume = new_vol >= 0 ? new_vol : 0;
-        return this.riport_current_volume(this.player[0].volume);
+        new_vol = ((this.player.volume * 100) - 5) / 100;
+        this.player.volume = new_vol >= 0 ? new_vol : 0;
+        return this.riport_current_volume(this.player.volume);
       };
 
       Player.prototype.volume_mute = function() {
-        this.volume_state = this.player[0].volume;
-        this.player[0].volume = 0;
-        return this.riport_current_volume(this.player[0].volume);
+        this.volume_state = this.player.volume;
+        this.player.volume = 0;
+        return this.riport_current_volume(this.player.volume);
       };
 
       Player.prototype.volume_unmute = function() {
-        this.player[0].volume = this.volume_state != null ? this.volume_state : this.volume_state = 0.1;
-        return this.riport_current_volume(this.player[0].volume);
+        this.player.volume = this.volume_state != null ? this.volume_state : this.volume_state = 0.1;
+        return this.riport_current_volume(this.player.volume);
       };
 
       Player.prototype.riport_current_volume = function(vol) {
@@ -54,28 +55,43 @@
         return this.current_playtime_riporter = null;
       };
 
+      Player.prototype.start_playtime_riporter = function() {
+        return this.current_playtime_riporter = this.setIntervalWithContext(function() {
+          return this.server.emit('player_riport_playtime', {
+            duration: this.player.duration,
+            currentTime: this.player.currentTime
+          });
+        }, 1000, this);
+      };
+
       Player.prototype.socket_events = function() {
         this.server.on('connect', (function(_this) {
           return function() {
             return _this.server.emit('iam', 'player');
           };
         })(this));
+        this.server.on('full_status', (function(_this) {
+          return function() {
+            return _this.server.emit('player_full_status', {
+              duration: _this.player.duration,
+              currentTime: _this.player.currentTime,
+              volume: (_this.player.volume * 100).toFixed(),
+              is_paused: _this.player.paused,
+              src: _this.player.src
+            });
+          };
+        })(this));
         this.server.on('play', (function(_this) {
           return function() {
             console.log('PLAYER: I start playing');
-            _this.player[0].play();
-            return _this.current_playtime_riporter = _this.setIntervalWithContext(function() {
-              return this.server.emit('player_riport_playtime', {
-                duration: this.player[0].duration,
-                currentTime: this.player[0].currentTime
-              });
-            }, 1000, _this);
+            _this.player.play();
+            return _this.start_playtime_riporter();
           };
         })(this));
         this.server.on('pause', (function(_this) {
           return function() {
             console.log('PLAYER: I pause playing');
-            _this.player[0].pause();
+            _this.player.pause();
             return _this.stop_playtime_riporter();
           };
         })(this));
@@ -97,18 +113,53 @@
             return _this.volume_mute();
           };
         })(this));
-        return this.server.on('unmute', (function(_this) {
+        this.server.on('unmute', (function(_this) {
           return function() {
             console.log('PLAYER: I unmute volume');
             return _this.volume_unmute();
           };
         })(this));
+        this.server.on('forward', (function(_this) {
+          return function() {
+            var is_paused;
+            console.log('PLAYER: I select next file');
+            is_paused = _this.player.paused;
+            if (!is_paused) {
+              _this.player.pause();
+            }
+            _this.stop_playtime_riporter();
+            _this.player.src = window.music_files[Math.floor(Math.random() * window.music_files.length)];
+            if (!is_paused) {
+              _this.player.play();
+            }
+            return _this.start_playtime_riporter();
+          };
+        })(this));
+        return this.server.on('backward', (function(_this) {
+          return function() {
+            var is_paused;
+            console.log('PLAYER: I select previous file');
+            is_paused = _this.player.paused;
+            if (!is_paused) {
+              _this.player.pause();
+            }
+            _this.stop_playtime_riporter();
+            _this.player.src = window.music_files[Math.floor(Math.random() * window.music_files.length)];
+            if (!is_paused) {
+              _this.player.play();
+            }
+            return _this.start_playtime_riporter();
+          };
+        })(this));
       };
 
       Player.prototype.jb_events = function() {
-        return this.player.on('ended', (function(_this) {
+        return $(this.player).on('ended', (function(_this) {
           return function(event) {
-            return _this.stop_playtime_riporter();
+            _this.stop_playtime_riporter();
+            _this.player.src = window.music_files[Math.floor(Math.random() * window.music_files.length)];
+            _this.player.play();
+            return _this.start_playtime_riporter();
           };
         })(this));
       };

@@ -86,9 +86,19 @@
             return _this.server.emit('remote_vol_up');
           };
         })(this));
-        return this.button_volume_down.on('click', (function(_this) {
+        this.button_volume_down.on('click', (function(_this) {
           return function(event) {
             return _this.server.emit('remote_vol_down');
+          };
+        })(this));
+        this.button_step_forward.on('click', (function(_this) {
+          return function(event) {
+            return _this.server.emit('remote_forward');
+          };
+        })(this));
+        return this.button_step_backward.on('click', (function(_this) {
+          return function(event) {
+            return _this.server.emit('remote_backward');
           };
         })(this));
       };
@@ -102,6 +112,23 @@
             return _this.disable_interface(false);
           };
         })(this));
+        this.server.on('player_full_status', (function(_this) {
+          return function(data) {
+            if (data.is_paused) {
+              _this.change_play_button_to_play();
+            } else {
+              _this.change_play_button_to_pause();
+            }
+            if (data.volume === 0) {
+              _this.change_mute_button_to_unmute();
+            } else {
+              _this.change_mute_button_to_mute();
+            }
+            _this.update_volume_progressbar(data.volume);
+            _this.update_playtime_progressbar(data.currentTime, data.duration);
+            return $('#currently_playing').html(decodeURIComponent(data.src));
+          };
+        })(this));
         this.server.on('disconnect', (function(_this) {
           return function() {
             _this.alert_socket_connect.addClass('hidden');
@@ -111,38 +138,62 @@
         })(this));
         this.server.on('player_riport_volume', (function(_this) {
           return function(data) {
-            return _this.progress_volume.find('.progress-bar').attr('aria-valuenow', data.volume).css('width', "" + data.volume + "%").html("" + data.volume + "%");
+            return _this.update_volume_progressbar(data.volume);
           };
         })(this));
         return this.server.on('player_riport_playtime', (function(_this) {
           return function(data) {
-            var played, playtime_percent, remaining;
-            playtime_percent = ((data.currentTime / data.duration) * 100).toFixed();
-            played = _this.seconds2time(data.currentTime.toFixed());
-            remaining = _this.seconds2time(data.duration.toFixed() - data.currentTime.toFixed());
-            _this.progress_playtime_current.attr('aria-valuenow', playtime_percent).css('width', "" + playtime_percent + "%").html("" + played);
-            return _this.progress_playtime_remaining.attr('aria-valuenow', 100 - playtime_percent).css('width', "" + (100 - playtime_percent) + "%").html("-" + remaining);
+            return _this.update_playtime_progressbar(data.currentTime, data.duration);
           };
         })(this));
       };
 
+      Remote.prototype.update_playtime_progressbar = function(current, duration) {
+        var played, playtime_percent, remaining;
+        if (duration !== null) {
+          playtime_percent = ((current / duration) * 100).toFixed();
+          played = this.seconds2time(current.toFixed());
+          remaining = this.seconds2time(duration.toFixed() - current.toFixed());
+        } else {
+          playtime_percent = played = remaining = 0;
+        }
+        this.progress_playtime_current.attr('aria-valuenow', playtime_percent).css('width', "" + playtime_percent + "%").html("" + played);
+        return this.progress_playtime_remaining.attr('aria-valuenow', 100 - playtime_percent).css('width', "" + (100 - playtime_percent) + "%").html("-" + remaining);
+      };
+
+      Remote.prototype.update_volume_progressbar = function(vol) {
+        return this.progress_volume.find('.progress-bar').attr('aria-valuenow', vol).css('width', "" + vol + "%").html("" + vol + "%");
+      };
+
+      Remote.prototype.change_play_button_to_play = function() {
+        return this.button_play_pause.removeClass('btn-primary').addClass('btn-warning').find('span.glyphicon').removeClass('glyphicon-pause').addClass('glyphicon-play');
+      };
+
+      Remote.prototype.change_play_button_to_pause = function() {
+        return this.button_play_pause.removeClass('btn-warning').addClass('btn-primary').find('span.glyphicon').removeClass('glyphicon-play').addClass('glyphicon-pause');
+      };
+
       Remote.prototype.play = function() {
         this.server.emit('remote_play');
-        return this.button_play_pause.removeClass('btn-warning').addClass('btn-primary').find('span.glyphicon').removeClass('glyphicon-play').addClass('glyphicon-pause').end().find('span.inner_text').html('Pause');
+        return this.change_play_button_to_pause();
       };
 
       Remote.prototype.pause = function() {
         this.server.emit('remote_pause');
-        return this.button_play_pause.removeClass('btn-primary').addClass('btn-warning').find('span.glyphicon').removeClass('glyphicon-pause').addClass('glyphicon-play').end().find('span.inner_text').html('Play');
+        return this.change_play_button_to_play();
       };
 
       Remote.prototype.change_mute_button_to_mute = function() {
-        return this.button_mute.removeClass('btn-warning').addClass('btn-primary').find('span.glyphicon').removeClass('glyphicon-music').addClass('glyphicon-volume-off').end().find('span.inner_text').html('Mute');
+        return this.button_mute.removeClass('btn-warning').addClass('btn-primary').find('span.glyphicon').removeClass('glyphicon-music').addClass('glyphicon-volume-off');
+      };
+
+      Remote.prototype.change_mute_button_to_unmute = function() {
+        return this.button_mute.removeClass('btn-primary').addClass('btn-warning').find('span.glyphicon').removeClass('glyphicon-volume-off').addClass('glyphicon-music');
       };
 
       Remote.prototype.mute = function() {
         this.server.emit('remote_mute');
-        return this.button_mute.removeClass('btn-primary').addClass('btn-warning').find('span.glyphicon').removeClass('glyphicon-volume-off').addClass('glyphicon-music').end().find('span.inner_text').html('Unmute');
+        return this.change_mute_button_to_unmute();
       };
 
       Remote.prototype.unmute = function() {
